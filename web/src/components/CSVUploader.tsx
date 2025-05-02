@@ -2,7 +2,7 @@
 
 import { useCallback } from "react"
 import { FileLineChart } from "lucide-react"
-import { Toaster } from "sonner"
+
 
 import { Button } from "./ui/button"
 import Notification from "./Notification"
@@ -103,11 +103,10 @@ export default function CSVUploader({
         style={{ display: "none" }}
       />
 
-      <Button onClick={handleButtonClick} variant="outline" className="mb-4">
+      <Button onClick={handleButtonClick} variant="outline" className="cursor-pointer mb-4 hover:text-green-700 hover:scale-105 transition-transform duration-200 ease-in-out">
         {renderFileName()}
       </Button>
 
-      <Toaster richColors closeButton={false} position="top-center" />
     </>
   )
 }

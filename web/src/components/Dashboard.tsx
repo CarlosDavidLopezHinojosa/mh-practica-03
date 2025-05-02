@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react"
-import { FileText, BookOpen, PlayCircle } from "lucide-react"
+import { FileText, BookOpen, PlayCircle, CodeXml, Zap } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "./ui/switch"
+import { Toaster } from "sonner"
 
 import LineChartPlot from "./LineChartPlot"
+import PatternChart from "./PatternChart"
 import CSVUploader from "./CSVUploader"
 import Sidebar from "./AppSidebar"
-
+import Notification from "./Notification"
 
 function DashBoard() {
   const [fileName, setFileName] = useState<string | null>(null)
@@ -18,33 +21,64 @@ function DashBoard() {
 
   const [chartData, setChartData] = useState<number[]>(Data)
   const [datasets, setDatasets] = useState<{ [key: string]: number[] }>({})
+  const [patterns, setPatterns] = useState<[number, number][]>([])
   const [selectedDataset, setSelectedDataset] = useState<string>("Serie temporal de ejemplo")
   const [toUpload, setToUpload] = useState(true)
+
+  // Estado para alternar entre modo Desarrollo y Producción
+  const [isDevMode, setIsDevMode] = useState(true)
 
   useEffect(() => {
     fetch("http://localhost:8000/datasets")
       .then((response) => response.json())
       .then((data) => setDatasets(data))
-      .catch((error) => console.error("Error fetching datasets:", error))
+      .catch((error) => {
+        console.error("Error fetching datasets:", error);
+        Notification({message: "Error al cargar los datasets", description: "No se pudieron cargar los datasets desde el servidor.", error: true})()
+      })
   }, [])
+
+  async function handleExecuteAlgorithm() {
+    const response = await fetch("http://localhost:8000/pattern", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ temporal_series: chartData }),
+    });
+
+    if (!response.ok) {
+      Notification({
+        message: "Error al ejecutar el algoritmo",
+        description: "No se pudo ejecutar el algoritmo en el servidor.",
+        error: true,
+      })();
+      return;
+    }
+
+    const data = await response.json();
+    console.log("Response from server:", data);
+
+    // Ensure the response contains a valid "best_pattern" array
+    if (data.best_pattern && Array.isArray(data.best_pattern)) {
+      setPatterns(data.best_pattern as [number, number][]);
+      Notification({
+        message: "Algoritmo ejecutado",
+        description: "El algoritmo se ha ejecutado correctamente.",
+        error: false,
+      })();
+    } else {
+      Notification({
+        message: "Error en la respuesta del servidor",
+        description: "El servidor no devolvió un patrón válido.",
+        error: true,
+      })();
+    }
+  }
 
   return (
     <div className="flex">
       <Sidebar>
-        {/* === DOCUMENTATION SECTION === */}
-        <div className="space-y-2 mb-4">
-          <Button variant="ghost" className="w-full justify-start gap-2">
-            <FileText className="w-4 h-4" />
-            Documentación
-          </Button>
-          <Button variant="ghost" className="w-full justify-start gap-2">
-            <BookOpen className="w-4 h-4" />
-            Manual de Código
-          </Button>
-        </div>
-
-        <Separator className="bg-gray-400"/>
-
         {/* === DATASET SECTION === */}
         <div className="space-y-4 my-4">
           <div className="font-semibold text-sm text-muted-foreground">Selecciona un dataset</div>
@@ -57,12 +91,12 @@ function DashBoard() {
               }
             }}
           >
-            <SelectTrigger className="bg-white">
+            <SelectTrigger className="cursor-pointer bg-white">
               <SelectValue placeholder="Selecciona un dataset" />
             </SelectTrigger>
             <SelectContent className="bg-gray-50">
               {Object.keys(datasets).map((datasetName) => (
-                <SelectItem key={datasetName} value={datasetName}>
+                <SelectItem key={datasetName} value={datasetName} className="cursor-pointer hover:bg-gray-200">
                   {datasetName}
                 </SelectItem>
               ))}
@@ -80,27 +114,66 @@ function DashBoard() {
             setToUpload={setToUpload}
           />
         </div>
-
-        <Separator  className="bg-gray-400"/>
+        <Separator className="bg-gray-400" />
 
         {/* === EXECUTION SECTION === */}
-        <div className="mt-4">
+        <div className="mt-4 space-y-2">
+
+
+          <div className="flex items-center justify-between px-2">
+            <span className={`flex items-center gap-1 text-sm font-medium ${isDevMode ? "text-green-600" : "text-orange-600"}`}>
+              {isDevMode ? <CodeXml className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+              Modo {isDevMode ? "Desarrollo" : "Producción"}
+            </span>
+            <Switch
+              checked={isDevMode}
+              onCheckedChange={setIsDevMode}
+              className={`cursor-pointer transition-colors duration-200 ring-1 ring-black ${
+                isDevMode ? "bg-green-500" : "bg-orange-500"
+              }`}
+            />
+          </div>
+
           <Button
             variant="outline"
-            className="w-full justify-start gap-2"
+            className={`cursor-pointer w-full justify-start gap-2 transition-transform duration-200 ease-in-out 
+              hover:transform hover:scale-105 ${
+                isDevMode ? "hover:text-green-600" : "hover:text-orange-600"
+              }`}
             onClick={() =>
-              console.log("Ejecutando algoritmo con el archivo:", fileName)
+              handleExecuteAlgorithm()
             }
           >
             <PlayCircle className="w-4 h-4" />
             Ejecutar Algoritmo
           </Button>
         </div>
+
+        <Separator className="bg-gray-400" />
+
+        {/* === DOCUMENTATION SECTION === */}
+        <div className="space-y-2 mb-4">
+          <Button variant="ghost" className="cursor-pointer w-full justify-start gap-2 hover:text-blue-600 hover:tranform hover:scale-105 transition-transform duration-200 ease-in-out">
+            <FileText className="w-4 h-4" />
+            Documentación
+          </Button>
+          <Button variant="ghost" className="cursor-pointer w-full justify-start gap-2 hover:text-emerald-600 hover:tranform hover:scale-105 transition-transform duration-200 ease-in-out">
+            <BookOpen className="w-4 h-4" />
+            Manual de Código
+          </Button>
+        </div>
       </Sidebar>
 
       <main className="flex-1 p-4">
-        <LineChartPlot chartData={chartData} datasetName={selectedDataset} />
+        <LineChartPlot chartData={chartData} datasetName={selectedDataset} isDevMode={isDevMode} />
+        
+        {patterns.length > 0 && (
+          <PatternChart chartData={chartData} datasetName={selectedDataset} isDevMode={isDevMode} patterns={patterns} />
+
+        )}
       </main>
+      <Toaster richColors closeButton={false} position="top-center" />
+
     </div>
   )
 }

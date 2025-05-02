@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { TrendingUp } from "lucide-react"
+import { TrendingUp, GitCommitVertical } from "lucide-react"
 import {
   CartesianGrid,
   Line,
@@ -30,6 +30,7 @@ type LineChartPlotProps = {
   chartData: number[]
   datasetName: string
   isDevMode: boolean
+  patterns: [number, number][]
 }
 
 const chartConfig: ChartConfig = {
@@ -39,7 +40,7 @@ const chartConfig: ChartConfig = {
   },
 }
 
-export default function LineChartPlot({ chartData, datasetName, isDevMode }: LineChartPlotProps) {
+export default function PatternChart({ chartData, datasetName, isDevMode, patterns }: LineChartPlotProps) {
   const initialRange = useMemo(
     () => [
       Math.floor(chartData.length / 4),
@@ -61,7 +62,9 @@ export default function LineChartPlot({ chartData, datasetName, isDevMode }: Lin
     [chartData, range]
   )
 
-  const tickInterval = Math.ceil(slicedData.length / 10)
+const patternLabels = useMemo(() => patterns.flat(), [patterns])
+
+const tickInterval = Math.ceil(slicedData.length / 10)
 
   return (
     <div className="w-4xl mx-auto mt-30">
@@ -95,7 +98,24 @@ export default function LineChartPlot({ chartData, datasetName, isDevMode }: Lin
                 type="natural"
                 stroke={isDevMode ? "hsl(var(--chart-2))" : "hsl(var(--chart-1))"}
                 strokeWidth={2}
-                dot={false}
+                dot={({ cx, cy, payload }) => {
+                  const r = 24;
+                  const isPattern = patternLabels.includes(payload.index);
+                  if (isPattern) {
+                    return (
+                      <GitCommitVertical
+                        key={payload.index}
+                        x={cx - r / 2}
+                        y={cy - r / 2}
+                        width={r}
+                        height={r}
+                        fill="hsl(var(--background))"
+                        stroke="var(--color-desktop)"
+                      />
+                    );
+                  }
+                  return <></>;
+                }}
               />
             </LineChart>
           </ChartContainer>
