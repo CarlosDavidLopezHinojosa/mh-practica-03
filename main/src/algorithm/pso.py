@@ -62,19 +62,19 @@ class particle:
 
 def occurrences(S, pattern, threshold):
     L = len(pattern)
-    patt_z = np.nan_to_num(zscore(pattern))
-    occs = []
+    patt_z = np.nan_to_num(zscore(pattern, nan_policy='omit'))
+    occs = 0
     for i in range(len(S) - L + 1):
         window = S[i:i + L]
-        win_z = np.nan_to_num(zscore(window))
+        win_z = np.nan_to_num(zscore(window, nan_policy='omit'))
         # Evitar calcular la correlación si la desviación estándar es cero
         # (esto puede ocurrir si todos los valores son iguales)
         if np.std(patt_z) == 0 or np.std(win_z) == 0:
             continue
         corr = np.corrcoef(patt_z, win_z)[0, 1]
         if corr >= threshold:
-            occs.append(1)
-    return sum(occs)
+            occs += 1
+    return occs
 
 def find_occurrences(S, pattern, threshold):
     """
@@ -89,11 +89,11 @@ def find_occurrences(S, pattern, threshold):
         list: Lista de índices donde se encuentra el patrón.
     """
     L = len(pattern)
-    patt_z = np.nan_to_num(zscore(pattern))
+    patt_z = np.nan_to_num(zscore(pattern, nan_policy='omit'))
     occ = []
     for i in range(len(S) - L + 1):
         window = S[i:i + L]
-        win_z = np.nan_to_num(zscore(window))
+        win_z = np.nan_to_num(zscore(window, nan_policy='omit'))
         if np.std(patt_z) == 0 or np.std(win_z) == 0:
             continue
         corr = np.corrcoef(patt_z, win_z)[0, 1]
@@ -137,9 +137,11 @@ def pso(temporal_series, max_lenght, min_lenght, threshold, swarm_size, iteratio
     """
     best_pattern = None
     best_fitness = -np.inf
-    particles = np.array([particle(min_lenght, max_lenght) for _ in range(swarm_size)], dtype=object)
-    print(particles)
-    # particles = [particle(min_lenght, max_lenght) for _ in range(swarm_size)]
+    particles = [particle(min_lenght, max_lenght) for _ in range(swarm_size)]
+
+    to_stop_iterations = 7
+    it = 0
+    upgrade = False
     
     for _ in range(iterations):
         for p in particles:
@@ -150,11 +152,18 @@ def pso(temporal_series, max_lenght, min_lenght, threshold, swarm_size, iteratio
             if fitness_value > best_fitness:
                 best_fitness = fitness_value
                 best_pattern = p.pattern.copy()
-        
-        # global_best = np.mean([p.best_pattern for p in particles], axis=0)
-        # print(f"Mejor patrón: {best_pattern}, Fitness: {best_fitness}")
+                upgrade = True
+
+        if not upgrade:
+            it += 1
+
+        if it >= to_stop_iterations:
+            return best_pattern
+
         for p in particles:
             p.move(omega, c1, c2, best_pattern)
+        
+        upgrade = False
     
     return best_pattern
     
@@ -189,7 +198,7 @@ def filter_and_merge_occurrences(raw_occ, L, merge_thresh):
 # if __name__ == "__main__":
 #     # Ejemplo de uso
 #     # Generar una serie temporal con 3 patrones
-#     t = np.linspace(0, 10, 7000)
+#     t = np.linspace(0, 10, 2000)
 #     temporal_series = (np.sin(2 * np.pi * 3 * t) +  # Patrón 1: Senoidal
 #                        np.sin(2 * np.pi * 7 * t) * (t > 3) * (t < 6) +  # Patrón 2: Senoidal en ventana
 #                        np.sin(2 * np.pi * 15 * t) * (t > 7))  # Patrón 3: Senoidal en ventana
@@ -201,7 +210,7 @@ def filter_and_merge_occurrences(raw_occ, L, merge_thresh):
 #     omega = 0.7
 #     c1 = 1.5
 #     c2 = 1.5
-#     df_path = "/Users/more/Desktop/code/college/metaheuristicas/mh-practica-03/main/charts/ecg-real.csv"
+#     df_path = "/Users/more/Desktop/code/college/metaheuristicas/mh-practica-03/main/charts/Synthetic-three-patterns-with-noise.csv"
 #     temporal_series = load_temporal_series(df_path)
 #     # temporal_series = [0, 0, 1, 2, 3, 0, 1, 2, 3, 0]
 
@@ -209,7 +218,7 @@ def filter_and_merge_occurrences(raw_occ, L, merge_thresh):
 #     L = int(best_pattern[0])
 #     coeffs = best_pattern[1:L+1]
 #     raw_occ = find_occurrences(temporal_series, coeffs, threshold)
-#     merge_thresh = 2
+#     merge_thresh = 4
 #     best_pattern = filter_and_merge_occurrences(raw_occ, L, merge_thresh)
 #     print("Mejor patrón encontrado:", best_pattern)
 #     plt.figure(figsize=(10,4))

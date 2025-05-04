@@ -18,8 +18,18 @@ app.add_middleware(
 )
 
 # Define a Pydantic model for the request body
-class TemporalSeriesRequest(BaseModel):
+class PatternRequest(BaseModel):
     temporal_series: list[float]
+    max_lenght: int
+    min_lenght: int
+    threshold: float
+    swarm_size: int
+    iterations: int
+    omega: float
+    c1: float
+    c2: float
+    merge_thresh: float
+
 
 @app.get("/")
 async def root():
@@ -62,7 +72,7 @@ async def parse_csv(file: UploadFile):
         raise HTTPException(status_code=400, detail=f"Error al procesar el fichero: {str(e)}")
     
 @app.post("/pattern")
-async def find_pattern(request: TemporalSeriesRequest):
+async def find_pattern(request: PatternRequest):
     """
     Encuentra patrones en una serie temporal utilizando el algoritmo PSO.
     """
@@ -74,25 +84,22 @@ async def find_pattern(request: TemporalSeriesRequest):
             raise HTTPException(status_code=400, detail="La serie temporal está vacía.")
 
         # Parámetros del algoritmo
-        max_lenght = 10
-        min_lenght = 2
-        threshold = 0.9
-        swarm_size = 10
-        iterations = 10
-        omega = 0.7
-        c1 = 1.5
-        c2 = 1.5
+        max_lenght = request.max_lenght
+        min_lenght = request.min_lenght
+        threshold = request.threshold
+        swarm_size = request.swarm_size
+        iterations = request.iterations
+        omega = request.omega
+        c1 = request.c1
+        c2 = request.c2
 
         # Ejecutar el algoritmo PSO para encontrar patrones
         best_pattern = pso.pso(temporal_series, max_lenght, min_lenght, threshold, swarm_size, iterations, omega, c1, c2)
-        
-        # Filtrar y fusionar ocurrencias cercanas
         L = int(best_pattern[0])
         coeffs = best_pattern[1:L+1]
         raw_occ = pso.find_occurrences(temporal_series, coeffs, threshold)
         merge_thresh = 2
         best_pattern = pso.filter_and_merge_occurrences(raw_occ, L, merge_thresh)
-        print("Mejor patrón encontrado:", best_pattern)
         return {"best_pattern": best_pattern}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al procesar la serie temporal: {str(e)}")
