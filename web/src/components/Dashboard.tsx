@@ -123,12 +123,21 @@ function DashBoard() {
       const data = await response.json();
 
       if (data.best_pattern && Array.isArray(data.best_pattern)) {
+        if (data.best_pattern.length === 0) {
+          Notification({
+            message: "No se encontraron patrones",
+            description: "El algoritmo no encontró patrones en la serie temporal.",
+            error: true,
+          })();
+        }
+        else {
         setPatterns(data.best_pattern as [number, number][]);
         Notification({
           message: "Algoritmo ejecutado",
           description: "El algoritmo se ha ejecutado correctamente.",
           error: false,
         })();
+      }
       } else {
         Notification({
           message: "Error en la respuesta del servidor",

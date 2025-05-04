@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import zscore
-import matplotlib.pyplot as plt
 import polars as pl
+from collections import deque
 
 def load_temporal_series(path: str):
     df = pl.read_csv(path)
@@ -62,11 +62,11 @@ class particle:
 
 def occurrences(S, pattern, threshold):
     L = len(pattern)
-    patt_z = np.nan_to_num(zscore(pattern, nan_policy='omit'))
+    patt_z = np.nan_to_num(zscore(pattern))
     occs = 0
     for i in range(len(S) - L + 1):
         window = S[i:i + L]
-        win_z = np.nan_to_num(zscore(window, nan_policy='omit'))
+        win_z = np.nan_to_num(zscore(window))
         # Evitar calcular la correlación si la desviación estándar es cero
         # (esto puede ocurrir si todos los valores son iguales)
         if np.std(patt_z) == 0 or np.std(win_z) == 0:
@@ -89,11 +89,11 @@ def find_occurrences(S, pattern, threshold):
         list: Lista de índices donde se encuentra el patrón.
     """
     L = len(pattern)
-    patt_z = np.nan_to_num(zscore(pattern, nan_policy='omit'))
-    occ = []
+    patt_z = np.nan_to_num(zscore(pattern))
+    occ = deque()
     for i in range(len(S) - L + 1):
         window = S[i:i + L]
-        win_z = np.nan_to_num(zscore(window, nan_policy='omit'))
+        win_z = np.nan_to_num(zscore(window))
         if np.std(patt_z) == 0 or np.std(win_z) == 0:
             continue
         corr = np.corrcoef(patt_z, win_z)[0, 1]
@@ -116,7 +116,7 @@ def fitness(S, pattern, threshold):
     L = int(pattern[0])
     coeffs = pattern[1:L+1]
     occ = occurrences(S, coeffs, threshold)
-    return occ
+    return occ + L
 
 def pso(temporal_series, max_lenght, min_lenght, threshold, swarm_size, iterations, omega, c1, c2):
     """
@@ -172,14 +172,14 @@ def filter_and_merge_occurrences(raw_occ, L, merge_thresh):
     Filtra solapamientos y luego hace merge de ocurrencias cercanas menores que merge_thresh
     """
     # Filtrado sin solapamientos
-    filtered = []
+    filtered = deque()
     last_end = -1
     for i in sorted(raw_occ):
         if i > last_end:
             filtered.append(i)
             last_end = i + L - 1
     # Merge de cercanos
-    merged = []
+    merged = deque()
     for start in filtered:
         end = start + L - 1
         if not merged:
@@ -193,41 +193,3 @@ def filter_and_merge_occurrences(raw_occ, L, merge_thresh):
             else:
                 merged.append([start, end])
     return merged
-
-
-# if __name__ == "__main__":
-#     # Ejemplo de uso
-#     # Generar una serie temporal con 3 patrones
-#     t = np.linspace(0, 10, 2000)
-#     temporal_series = (np.sin(2 * np.pi * 3 * t) +  # Patrón 1: Senoidal
-#                        np.sin(2 * np.pi * 7 * t) * (t > 3) * (t < 6) +  # Patrón 2: Senoidal en ventana
-#                        np.sin(2 * np.pi * 15 * t) * (t > 7))  # Patrón 3: Senoidal en ventana
-#     max_lenght = 10
-#     min_lenght = 2
-#     threshold = 0.9
-#     swarm_size = 10
-#     iterations = 10
-#     omega = 0.7
-#     c1 = 1.5
-#     c2 = 1.5
-#     df_path = "/Users/more/Desktop/code/college/metaheuristicas/mh-practica-03/main/charts/Synthetic-three-patterns-with-noise.csv"
-#     temporal_series = load_temporal_series(df_path)
-#     # temporal_series = [0, 0, 1, 2, 3, 0, 1, 2, 3, 0]
-
-#     best_pattern = pso(temporal_series, max_lenght, min_lenght, threshold, swarm_size, iterations, omega, c1, c2)
-#     L = int(best_pattern[0])
-#     coeffs = best_pattern[1:L+1]
-#     raw_occ = find_occurrences(temporal_series, coeffs, threshold)
-#     merge_thresh = 4
-#     best_pattern = filter_and_merge_occurrences(raw_occ, L, merge_thresh)
-#     print("Mejor patrón encontrado:", best_pattern)
-#     plt.figure(figsize=(10,4))
-#     plt.plot(temporal_series, label='Serie original')
-#     for start, end in best_pattern:
-#         plt.axvspan(start, end, color='orange', alpha=0.3)
-#     plt.title('Detección de patrones con merge de cercanos')
-#     plt.xlabel('Índice')
-#     plt.ylabel('Valor')
-#     plt.legend()
-#     plt.tight_layout()
-#     plt.show()

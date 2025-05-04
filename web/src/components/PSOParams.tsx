@@ -64,7 +64,7 @@ const PARAM_LIMITS: Partial<Record<keyof PSOParams, { min: number; max: number }
   inertiaWeight: { min: 0, max: 1 },
   cognitiveWeight: { min: 0, max: 5 },
   socialWeight: { min: 0, max: 5 },
-  mergeThreshold: { min: 0, max: 10 },
+  mergeThreshold: { min: 0, max: 20 },
 }
 
 export default function PSOParamsComponent({ PSOParams, setPSOParams }: PSOParamsProps) {

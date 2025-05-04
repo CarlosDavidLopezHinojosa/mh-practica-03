@@ -97,6 +97,8 @@ async def find_pattern(request: PatternRequest):
         best_pattern = pso.pso(temporal_series, max_lenght, min_lenght, threshold, swarm_size, iterations, omega, c1, c2)
         L = int(best_pattern[0])
         coeffs = best_pattern[1:L+1]
+        print(f"coeffs: {coeffs} lenght: {L} fitness: {pso.fitness(temporal_series, best_pattern, threshold)}")
+
         raw_occ = pso.find_occurrences(temporal_series, coeffs, threshold)
         merge_thresh = 2
         best_pattern = pso.filter_and_merge_occurrences(raw_occ, L, merge_thresh)
