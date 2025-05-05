@@ -3,3 +3,4 @@ __pycache__/
 gapso.py
 .venv/
 venv/
+node_modules/
