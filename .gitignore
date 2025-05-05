@@ -1,3 +1,5 @@
 .DS_Store
 __pycache__/
 gapso.py
+.venv/
+venv/
