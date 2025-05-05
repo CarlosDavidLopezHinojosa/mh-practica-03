@@ -92,6 +92,7 @@ async def find_pattern(request: PatternRequest):
         omega = request.omega
         c1 = request.c1
         c2 = request.c2
+        merge_thresh = request.merge_thresh
 
         # Ejecutar el algoritmo PSO para encontrar patrones
         best_pattern = pso.pso(temporal_series, max_lenght, min_lenght, threshold, swarm_size, iterations, omega, c1, c2)
@@ -100,7 +101,7 @@ async def find_pattern(request: PatternRequest):
         print(f"coeffs: {coeffs} lenght: {L} fitness: {pso.fitness(temporal_series, best_pattern, threshold)}")
 
         raw_occ = pso.find_occurrences(temporal_series, coeffs, threshold)
-        merge_thresh = 2
+        # merge_thresh = 2
         best_pattern = pso.filter_and_merge_occurrences(raw_occ, L, merge_thresh)
         return {"best_pattern": best_pattern}
     except Exception as e:
