@@ -3,5 +3,5 @@
 Dale con:
 
 ```shell
-python3 assistan.py
+python3 assistant.py
 ```
