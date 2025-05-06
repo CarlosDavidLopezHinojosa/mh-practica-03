@@ -55,7 +55,7 @@ class particle:
         """
         return self._pattern.copy()
     
-    def move(self, omega: float, c1: float, c2: float, global_best: np.array):
+    def move(self, omega: float, c1: float, c2: float, gbest: np.array):
         """
         Actualiza la posición y velocidad de la partícula.
 
@@ -63,13 +63,13 @@ class particle:
             omega (float): Coeficiente de inercia.
             c1 (float): Coeficiente cognitivo.
             c2 (float): Coeficiente social.
-            global_best (array): Mejor patrón global encontrado.
+            gbest (array): Mejor patrón global encontrado.
         """
         r1 = np.random.rand()
         r2 = np.random.rand()
         self._velocity = (omega * self._velocity +
                          c1 * r1 * (self._pbest - self._pattern) +
-                         c2 * r2 * (global_best - self._pattern))
+                         c2 * r2 * (gbest - self._pattern))
         self._pattern += self._velocity
         self._pattern[0] = np.clip(self._pattern[0], self._min, self._max)
 
@@ -84,6 +84,22 @@ class particle:
         
         return self.length(), self.pattern()
 
+
+def occurrences(S, pattern, threshold):
+    L = len(pattern)
+    patt_z = np.nan_to_num(zscore(pattern))
+    occs = 0
+    for i in range(len(S) - L + 1):
+        window = S[i:i + L]
+        win_z = np.nan_to_num(zscore(window))
+        # Evitar calcular la correlación si la desviación estándar es cero
+        # (esto puede ocurrir si todos los valores son iguales)
+        if np.std(patt_z) == 0 or np.std(win_z) == 0:
+            continue
+        corr = np.corrcoef(patt_z, win_z)[0, 1]
+        if corr >= threshold:
+            occs += 1
+    return occs
 
 def find_occurrences(S, pattern, threshold):
     """
@@ -110,49 +126,24 @@ def find_occurrences(S, pattern, threshold):
             occ.append(i)
     return occ
 
-
-def fitness(S: np.array, ptc: particle, threshold: float):
+def fitness(S, pattern, threshold):
     """
     Calcula la función de aptitud de una partícula.
 
     Parameters:
         S (array): Serie temporal.
-        ptc (array): Patrón a evaluar.
+        pattern (array): Patrón a evaluar.
         threshold (float): Umbral de correlación.
 
     Returns:
         float: Valor de la función de aptitud.
     """
+    L = int(pattern[0])
+    coeffs = pattern[1:L+1]
+    occ = occurrences(S, coeffs, threshold)
+    return occ + L
 
-    def count(S: np.array, pattern: np.array, threshold: float, start: int, end: int):
-        L = len(pattern)
-        patt_z = np.nan_to_num(zscore(pattern))
-        occs = 0
-        
-        for i in range(start, end - L + 1):
-            window = S[i:i+L]
-            win_z = np.nan_to_num(zscore(window))
-            if np.std(patt_z) == 0 or np.std(win_z) == 0:
-                continue
-            corr = np.corrcoef(patt_z, win_z)[0, 1]
-            if corr >= threshold:
-                occs += 1
-        return occs
-    
-    L, pattern = ptc.decode()
-    num_threads = cpu_count()
-    start = lambda i : i * len(S) // num_threads
-    end = lambda i : (i + 1) * len(S) // num_threads
-    occs = 0
-    with ft.ThreadPoolExecutor(max_workers=num_threads) as executor:
-        futures = [ executor.submit(count, S, pattern, threshold, start(i), end(i))
-                   for i in range(num_threads) ]
-        for future in ft.as_completed(futures):
-            occs += future.result()
-            
-    return occs
-
-def upgrade(ptc: particle, fvalue: float, gvalue: float) -> bool:
+def _upgrade(ptc: particle, fvalue: float, gvalue: float) -> bool:
     
     """
     Actualiza el mejor patrón personal y el mejor patrón global.
@@ -172,18 +163,16 @@ def upgrade(ptc: particle, fvalue: float, gvalue: float) -> bool:
     
     return fvalue > gvalue
 
-def pso(S: np.array, 
-        lmax: int, lmin: int, threshold: float, swarm_size: int, 
-        iterations: int, omega: float, c1: float, c2: float):
+def pso(temporal_series, max_lenght, min_lenght, threshold, swarm_size, iterations, omega, c1, c2):
     """
     Algoritmo PSO para encontrar patrones en series temporales.
 
     Parameters:
-        S (array): Serie temporal a analizar.
-        lmax (int): Longitud máxima del patrón.
-        lmin (int): Longitud mínima del patrón.
+        temporal_series (array): Serie temporal a analizar.
+        max_lenght (int): Longitud máxima del patrón.
+        min_lenght (int): Longitud mínima del patrón.
         threshold (float): Umbral de correlación.
-        swarm_size (int): Tamaño del enjambre de partículas.
+        swarm_size (int): Tamaño de la población de partículas.
         iterations (int): Número de iteraciones del algoritmo.
         omega (float): Coeficiente de inercia.
         c1 (float): Coeficiente cognitivo.
@@ -191,22 +180,37 @@ def pso(S: np.array,
 
     Returns:
     """
-    gbest = None
-    gvalue = -np.inf
-    particles = [particle(lmin, lmax) for _ in range(swarm_size)]
+    best_pattern = None
+    best_fitness = -np.inf
+    particles = [particle(min_lenght, max_lenght) for _ in range(swarm_size)]
+
+    to_stop_iterations = 7
+    it = 0
+    upgrade = False
     
     for _ in range(iterations):
-        for ptc in particles:
-            fvalue = fitness(S, ptc, threshold)
-
-            if upgrade(ptc, fvalue, gvalue):
-                gbest = ptc.copy()
-                gvalue = fvalue
-            
         for p in particles:
-            p.move(omega, c1, c2, gbest)
+            fitness_value = fitness(temporal_series, p._pattern, threshold)
+
+            upgrade = _upgrade(p, fitness_value, best_fitness)
+            if upgrade:
+                best_fitness = fitness_value
+                best_pattern = p._pattern.copy()
+                upgrade = True
+        # if upgrade:
+
+        if not upgrade:
+            it += 1
+
+        if it >= to_stop_iterations:
+            return best_pattern
+
+        for p in particles:
+            p.move(omega, c1, c2, best_pattern)
+        
+        upgrade = False
     
-    return gbest
+    return best_pattern
     
 def filter_and_merge_occurrences(raw_occ, L, merge_thresh):
     """
@@ -234,16 +238,3 @@ def filter_and_merge_occurrences(raw_occ, L, merge_thresh):
             else:
                 merged.append([start, end])
     return merged
-
-
-S = np.sin(np.linspace(0, 10, 2000))
-
-a = pso(S, 5, 1, 0.8, 10, 10, 4, 1.5, 1.5)
-
-print(a)
-
-occ = find_occurrences(S, a, 0.8)
-print(occ)
-
-i = filter_and_merge_occurrences(occ, a[0], 2)
-print(i)
