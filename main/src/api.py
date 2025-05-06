@@ -4,6 +4,9 @@ from pydantic import BaseModel
 from src.tools import utils
 from src.algorithm import pso
 
+from warnings import filterwarnings
+filterwarnings("ignore", category=RuntimeWarning)
+
 
 app = FastAPI()
 MAINDIR = utils.cwd().split("src")[0]
@@ -17,7 +20,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Define a Pydantic model for the request body
 class PatternRequest(BaseModel):
     temporal_series: list[float]
     max_lenght: int
@@ -95,6 +97,7 @@ async def find_pattern(request: PatternRequest):
         merge_thresh = request.merge_thresh
 
         # Ejecutar el algoritmo PSO para encontrar patrones
+        print("Ejecutando el algoritmo PSO...")
         best_pattern = pso.pso(temporal_series, max_lenght, min_lenght, threshold, swarm_size, iterations, omega, c1, c2)
         L = int(best_pattern[0])
         coeffs = best_pattern[1:L+1]
