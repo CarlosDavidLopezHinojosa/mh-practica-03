@@ -1,0 +1,16 @@
+[package]
+name = "fastevaluate"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "fastevaluate"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.22", features = ["extension-module"] }
+numpy = "0.22"
+ndarray = { version = "0.16", features = ["rayon", "blas"] }
+blas-src = { version = "0.8", features = ["openblas"] }
+openblas-src = { version = "0.10", features = ["cblas", "system"] }
+rayon = "1.10.0"
