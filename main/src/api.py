@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from src.tools import utils
 from src.algorithm import pso
 
+import numpy as np
+
 from warnings import filterwarnings
 filterwarnings("ignore", category=RuntimeWarning)
 
@@ -95,6 +97,8 @@ async def find_pattern(request: PatternRequest):
         c1 = request.c1
         c2 = request.c2
         merge_thresh = request.merge_thresh
+
+        temporal_series = np.array(temporal_series, dtype=np.float64)
 
         # Ejecutar el algoritmo PSO para encontrar patrones
         print("Ejecutando el algoritmo PSO...")

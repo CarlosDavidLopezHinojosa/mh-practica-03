@@ -5,6 +5,8 @@ from collections import deque
 import concurrent.futures as ft
 from os import cpu_count
 
+from fastevaluate import fastfitness
+
 
 class particle:
     """
@@ -22,7 +24,7 @@ class particle:
         """
         self._min = lmin
         self._max = lmax
-        self._pattern = np.random.uniform(-1, 1, size=lmax+1)
+        self._pattern = np.random.uniform(-1, 1, size=lmax+1).astype(np.float64)
         self._pattern[0] = np.random.randint(lmin, lmax+1)
 
         self._velocity = np.zeros(lmax+1)
@@ -143,7 +145,7 @@ def fitness(S, pattern, threshold):
     occ = occurrences(S, coeffs, threshold)
     return occ + L
 
-def _upgrade(ptc: particle, fvalue: float, gvalue: float) -> bool:
+def upgrade(ptc: particle, fvalue: float, gvalue: float) -> bool:
     
     """
     Actualiza el mejor patrón personal y el mejor patrón global.
@@ -183,33 +185,18 @@ def pso(temporal_series, max_lenght, min_lenght, threshold, swarm_size, iteratio
     best_pattern = None
     best_fitness = -np.inf
     particles = [particle(min_lenght, max_lenght) for _ in range(swarm_size)]
-
-    to_stop_iterations = 7
-    it = 0
-    upgrade = False
     
     for _ in range(iterations):
         for p in particles:
-            fitness_value = fitness(temporal_series, p._pattern, threshold)
+            fitness_value = fastfitness(temporal_series, p._pattern, threshold)
 
-            upgrade = _upgrade(p, fitness_value, best_fitness)
-            if upgrade:
+            if upgrade(p, fitness_value, best_fitness):
                 best_fitness = fitness_value
                 best_pattern = p._pattern.copy()
-                upgrade = True
-        # if upgrade:
-
-        if not upgrade:
-            it += 1
-
-        if it >= to_stop_iterations:
-            return best_pattern
 
         for p in particles:
             p.move(omega, c1, c2, best_pattern)
-        
-        upgrade = False
-    
+
     return best_pattern
     
 def filter_and_merge_occurrences(raw_occ, L, merge_thresh):
