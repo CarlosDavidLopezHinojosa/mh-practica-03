@@ -155,6 +155,13 @@ def dev():
 def prod():
     console.print("\n[bold blue]Modo producción activado[/bold blue]")
     try:
+        console.print("[bold]Eliminando directorios '__pycache__'...[/bold]")
+        for root, dirs, files in os.walk("."):
+            for dir_name in dirs:
+                if dir_name == "__pycache__":
+                    pycache_path = os.path.join(root, dir_name)
+                    shutil.rmtree(pycache_path)
+                    console.print(f"[green]✔ Eliminado:[/green] {pycache_path}")
         with console.status("[bold]Construyendo contenedores...[/bold]", spinner="dots"):
             subprocess.run(["docker-compose", "build"], check=True)
 
