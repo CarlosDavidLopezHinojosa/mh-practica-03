@@ -40,6 +40,7 @@ def ensure_virtualenv():
         with console.status("Compilando módulo Rust...", spinner="dots"):
             subprocess.run(["maturin", "develop", "--release"], cwd=rust_path, check=True)
 
+
 def dev():
     if not check_pnpm():
         return
@@ -169,16 +170,19 @@ def tree():
         console.print("[bold red]El directorio 'main/' no existe.[/bold red]")
         input("\nPresiona ENTER para volver al menú.")
         return
-
+      
     exclude_dirs = {"__pycache__", ".venv", "venv", ".git", "target", "node_modules", ".idea", ".vscode"}
+
     file_icons = {
         ".py": "🐍",
         ".csv": "📈",
         ".txt": "📄",
         "Dockerfile": "🐳",
+
         ".rs": "🦀",
         ".toml": "📦",
         ".lock": "🔒",
+
     }
 
     root_tree = Tree("🌲 [bold blue]main/[/bold blue]")

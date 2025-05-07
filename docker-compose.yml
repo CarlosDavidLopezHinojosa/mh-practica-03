@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: main/Dockerfile
-    container_name: fastapi_app
+    container_name: api
     ports:
       - "8000:8000"
     volumes:
@@ -14,7 +14,7 @@ services:
     build:
       context: .
       dockerfile: web/Dockerfile
-    container_name: react_app
+    container_name: ui
     ports:
       - "5173:80"
     depends_on:
