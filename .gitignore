@@ -3,5 +3,7 @@ __pycache__/
 gapso.py
 .venv/
 venv/
+.idea/
+target/
+Cargo.lock
 node_modules/
-rust/

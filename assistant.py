@@ -32,6 +32,14 @@ def ensure_virtualenv():
         pip_executable = os.path.join(venv_path, "bin", "pip") if os.name != "nt" else os.path.join(venv_path, "Scripts", "pip.exe")
         with console.status("Instalando dependencias...", spinner="dots"):
             subprocess.run([pip_executable, "install", "-r", requirements], check=True)
+    
+    rust_path = os.path.join("main", "rust")
+
+    if os.path.isdir(rust_path):
+        console.print("[yellow]Compilando el módulo Rust...[/yellow]")
+        with console.status("Compilando módulo Rust...", spinner="dots"):
+            subprocess.run(["maturin", "develop", "--release"], cwd=rust_path, check=True)
+
 
 def dev():
     if not check_pnpm():
@@ -162,13 +170,19 @@ def tree():
         console.print("[bold red]El directorio 'main/' no existe.[/bold red]")
         input("\nPresiona ENTER para volver al menú.")
         return
+      
+    exclude_dirs = {"__pycache__", ".venv", "venv", ".git", "target", "node_modules", ".idea", ".vscode"}
 
-    exclude_dirs = {"__pycache__", ".venv", "venv", ".git"}
     file_icons = {
         ".py": "🐍",
         ".csv": "📈",
         ".txt": "📄",
         "Dockerfile": "🐳",
+
+        ".rs": "🦀",
+        ".toml": "📦",
+        ".lock": "🔒",
+
     }
 
     root_tree = Tree("🌲 [bold blue]main/[/bold blue]")
