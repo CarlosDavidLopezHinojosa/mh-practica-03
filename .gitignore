@@ -4,3 +4,4 @@ gapso.py
 .venv/
 venv/
 node_modules/
+rust/
