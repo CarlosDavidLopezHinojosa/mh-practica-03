@@ -130,6 +130,9 @@ def fitness(series: np.ndarray, ptc: particle, threshold: float) -> float:
     Note:
         Se realiza una llamada a una API implementada en Rust para calcular el fitness.
         El esquema es similiar a la función `find_occurrences`.
+
+    Warning:
+        Esta función dará error si los arreglos no son numpy arrays de tipo float64.
     """
     return fastfitness(series, ptc.copy(), threshold)
 
@@ -180,10 +183,10 @@ def pso(series: np.ndarray, max_length: int, min_length: int,
 
     for _ in range(iterations):
         for p in particles:
-            fval = fitness(series, p._pattern, threshold)
+            fval = fitness(series, p, threshold)
             if upgrade(p, fval, best_fitness):
                 best_fitness = fval
-                best_pattern = p._pattern.copy()
+                best_pattern = p.copy()
 
         # Movimiento de todas las partículas
         for p in particles:
