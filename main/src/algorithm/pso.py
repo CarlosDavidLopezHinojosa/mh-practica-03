@@ -1,4 +1,5 @@
 import numpy as np
+
 from scipy.stats import zscore
 from collections import deque
 from typing import Deque, List, Tuple, Optional
@@ -86,35 +87,6 @@ class particle:
         """
         return self.length(), self.pattern()
 
-
-def occurrences(series: np.ndarray, pattern: np.ndarray, threshold: float) -> int:
-    """
-    Cuenta cuántas veces aparece un patrón en una serie temporal superando 
-    un umbral de correlación.
-
-    Args:
-        series (np.ndarray): Serie temporal de datos.
-        pattern (np.ndarray): Vector de coeficientes a buscar.
-        threshold (float): Umbral mínimo de correlación ([-1, 1]).
-
-    Returns:
-        int: Número de ocurrencias detectadas.
-    """
-    L: int = len(pattern)
-    patt_z = np.nan_to_num(zscore(pattern))
-    count: int = 0
-
-    for i in range(len(series) - L + 1):
-        window = series[i : i + L]
-        win_z = np.nan_to_num(zscore(window))
-        if np.std(patt_z) == 0 or np.std(win_z) == 0:
-            continue
-        corr = np.corrcoef(patt_z, win_z)[0, 1]
-        if corr >= threshold:
-            count += 1
-    return count
-
-
 def find_occurrences(series: np.ndarray, pattern: np.ndarray, threshold: float) -> Deque[int]:
     """
     Encuentra índices de inicio de cada ocurrencia de un patrón en la serie 
@@ -143,26 +115,26 @@ def find_occurrences(series: np.ndarray, pattern: np.ndarray, threshold: float) 
     return occ
 
 
-def fitness(series: np.ndarray, pattern: np.ndarray, threshold: float) -> float:
+def fitness(series: np.ndarray, ptc: particle, threshold: float) -> float:
     """
     Evalúa la aptitud de un patrón combinando longitud y ocurrencias.
 
     Args:
         series (np.ndarray): Serie temporal.
-        pattern (np.ndarray): Patrón codificado (posición 0: longitud).
-        threshold (float): Umbral de correlación.
+        ptc (particle): Particula con el patrón a evaluar.
+        threshold (float): Umbral de correlación, limita la aceptación de ocurrencias.
 
     Returns:
         float: Valor de aptitud = #ocurrencias + longitud.
+
+    Note:
+        Se realiza una llamada a una API implementada en Rust para calcular el fitness.
+        El esquema es similiar a la función `find_occurrences`.
     """
-    L: int = int(pattern[0])
-    coeffs: np.ndarray = pattern[1 : L + 1]
-    occ_count = occurrences(series, coeffs, threshold)
-    return float(occ_count + L)
+    return fastfitness(series, ptc.copy(), threshold)
 
 
-def upgrade(
-    ptc: particle, fvalue: float, gfitness: float) -> bool:
+def upgrade(ptc: particle, fvalue: float, gfitness: float) -> bool:
     """
     Actualiza la mejor solución personal (pbest) y determina si hay mejora global.
 
@@ -176,7 +148,7 @@ def upgrade(
     """
     if fvalue > ptc._pfitness:
         ptc._pfitness = fvalue
-        ptc._pbest = ptc._pattern.copy()
+        ptc._pbest = ptc.copy()
 
     return fvalue > gfitness
 
@@ -208,7 +180,7 @@ def pso(series: np.ndarray, max_length: int, min_length: int,
 
     for _ in range(iterations):
         for p in particles:
-            fval = fastfitness(series, p._pattern, threshold)
+            fval = fitness(series, p._pattern, threshold)
             if upgrade(p, fval, best_fitness):
                 best_fitness = fval
                 best_pattern = p._pattern.copy()
