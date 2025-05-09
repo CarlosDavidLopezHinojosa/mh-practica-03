@@ -88,7 +88,6 @@ fn fastfitness(
     Ok(occs as f64 + L as f64)
 }
 
-
 /// This module is implemented in Rust.
 #[pymodule]
 fn fastevaluate(m: &Bound<'_, PyModule>) -> PyResult<()> {

@@ -110,6 +110,7 @@ async def find_pattern(request: PatternRequest):
         raw_occ = pso.find_occurrences(temporal_series, coeffs, threshold)
         # merge_thresh = 2
         best_pattern = pso.merge(raw_occ, L, merge_thresh)
+        print(f"Mejor patrón encontrado: {best_pattern}")
         return {"best_pattern": best_pattern}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al procesar la serie temporal: {str(e)}")

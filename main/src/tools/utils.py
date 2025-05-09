@@ -1,5 +1,5 @@
 import polars as pl
-
+import numpy as np
 from os import path
 from typing import Union
 
@@ -17,7 +17,7 @@ def load_temporal_series(path: Union[str, bytes], numpy: bool = False):
     """
     df = pl.read_csv(path)
     index = df.columns[0] if len(df.columns) == 1 else df.columns[1]
-    return df[index].to_numpy() if numpy else df[index].to_list()
+    return df[index].to_numpy().astype(np.float64) if numpy else df[index].to_list()
 
 def cwd():
     return path.dirname(__file__)
